@@ -3,8 +3,9 @@ package com.algaworks.algafood.auth;
 import java.util.Arrays;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,8 +16,8 @@ import org.springframework.security.oauth2.config.annotation.web.configurers.Aut
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerSecurityConfigurer;
 import org.springframework.security.oauth2.provider.CompositeTokenGranter;
 import org.springframework.security.oauth2.provider.TokenGranter;
-import org.springframework.security.oauth2.provider.token.TokenStore;
-import org.springframework.security.oauth2.provider.token.store.redis.RedisTokenStore;
+import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
+import org.springframework.security.oauth2.provider.token.store.KeyStoreKeyFactory;
 
 @Configuration
 @EnableAuthorizationServer
@@ -32,7 +33,7 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
 	private UserDetailsService userDetailsService;
 	
 	@Autowired
-	private RedisConnectionFactory redisConnectionfactory;
+	private JwtKeyStoreProperties jwtKeyStoreProperties;
 	
 	@Override
 	public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
@@ -101,12 +102,21 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
 			.authenticationManager(authenticationManager)
 			.userDetailsService(userDetailsService)
 			.reuseRefreshTokens(false)
-			.tokenStore(redisTokenStore())
+			.accessTokenConverter(jwtAccessTokenConverter())
 			.tokenGranter(tokenGranter(endpoints));
 	}
 	
-	public TokenStore redisTokenStore() {
-		return new RedisTokenStore(redisConnectionfactory);
+	@Bean
+	public JwtAccessTokenConverter jwtAccessTokenConverter() {
+		JwtAccessTokenConverter jwtAccessTokenConverter = new JwtAccessTokenConverter();
+		// jwtAccessTokenConverter.setSigningKey("fsd8a7f9f47d98sa7f1sd9c879fcasdf71c8sd97cf8sad97f1csd9817cfsd977f1cd97sad19sd"); assinatura simetrica
+		var jksResource = new ClassPathResource(jwtKeyStoreProperties.getPath());
+
+		
+		var keyStoreFactory = new KeyStoreKeyFactory(jksResource, jwtKeyStoreProperties.getPassword().toCharArray());
+		var keyPair = keyStoreFactory.getKeyPair(jwtKeyStoreProperties.getKeypairAlias());
+		jwtAccessTokenConverter.setKeyPair(keyPair);
+		return jwtAccessTokenConverter;
 	}
 	
 }
